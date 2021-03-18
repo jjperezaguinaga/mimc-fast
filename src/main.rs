@@ -11,18 +11,20 @@ construct_uint! {
     pub struct U512(8);
 }
 use itertools::iproduct;
+use std::env;
 use std::ops::Div;
 use std::ops::Rem;
-use std::env;
 
 use rocket_contrib::json::Json;
 use serde::{Deserialize, Serialize};
 
 use rayon::prelude::*;
 
-use rocket::http::Method;
 use rocket::config::{Config, ConfigError, Environment};
+use rocket::http::Method;
 use rocket_cors::{catch_all_options_routes, AllowedHeaders, AllowedOrigins};
+
+use rcgen::generate_simple_self_signed;
 
 lazy_static! {
     static ref P: U512 = U512::from_dec_str(
@@ -326,7 +328,7 @@ impl MimcState {
         self.r = t.fifth_power().plus(&self.r);
     }
 
-    fn sponge(inputs: Vec<i64>, n_outputs: usize, rounds: usize, key:u32) -> Vec<PrimeElem> {
+    fn sponge(inputs: Vec<i64>, n_outputs: usize, rounds: usize, key: u32) -> Vec<PrimeElem> {
         let inputs = inputs
             .into_iter()
             .map(|x| {
@@ -379,7 +381,7 @@ struct ChunkFootprint {
 struct Task {
     chunkFootprint: ChunkFootprint,
     planetRarity: u32,
-    planetHashKey: u32
+    planetHashKey: u32,
 }
 
 #[allow(non_snake_case)]
@@ -438,9 +440,17 @@ fn main() -> Result<(), ConfigError> {
     .unwrap();
     let options_routes = catch_all_options_routes();
 
+    // Generate a certificate that's valid for "localhost" and "hello.world.example"
+    let subject_alt_names = vec!["0.0.0.0".to_string()];
+    let cert = generate_simple_self_signed(subject_alt_names).unwrap();
+
+    let certs = cert.serialize_pem().unwrap();
+    let key = cert.serialize_private_key_pem();
+
     let config = Config::build(Environment::Staging)
         .address("0.0.0.0")
         .port(port)
+        .tls(&certs, &key)
         .finalize()?;
 
     rocket::custom(config)
