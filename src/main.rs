@@ -1,9 +1,11 @@
+use http_types::headers::HeaderValue;
 use itertools::iproduct;
 use lazy_static::lazy_static;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::Div;
 use std::ops::Rem;
+use tide::security::{CorsMiddleware, Origin};
 use tide::{Body, Request};
 use tide_acme::{AcmeConfig, TideRustlsExt};
 use uint::construct_uint;
@@ -387,7 +389,14 @@ struct Animal {
 async fn main() -> tide::Result<()> {
     let path = std::env::var("TIDE_ACME_CACHE_DIR").unwrap();
 
+    let cors = CorsMiddleware::new()
+        .allow_methods("GET, POST, OPTIONS".parse::<HeaderValue>().unwrap())
+        .allow_origin(Origin::from("*"))
+        .allow_credentials(false);
+
     let mut app = tide::new();
+    app.with(cors);
+
     app.at("/").get(|_| async { Ok("Hello TLS") });
 
     app.at("/mine").post(|mut req: Request<()>| async move {

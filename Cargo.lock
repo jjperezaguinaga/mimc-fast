@@ -1109,6 +1109,7 @@ name = "mimc-fast"
 version = "0.1.0"
 dependencies = [
  "async-std",
+ "http-types",
  "itertools",
  "lazy_static",
  "rayon",
