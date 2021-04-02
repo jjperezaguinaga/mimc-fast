@@ -342,7 +342,7 @@ pub struct Coords {
     pub y: i64,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Planet {
     pub coords: Coords,
     pub hash: String,
@@ -356,7 +356,7 @@ pub struct ChunkFootprint {
 }
 
 #[allow(non_snake_case)]
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Task {
     pub chunkFootprint: ChunkFootprint,
     pub planetRarity: u32,
@@ -364,7 +364,7 @@ pub struct Task {
 }
 
 #[allow(non_snake_case)]
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Response {
     pub chunkFootprint: ChunkFootprint,
     pub planetLocations: Vec<Planet>,
