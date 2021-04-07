@@ -9,7 +9,7 @@
     <script type="module">
       // Importing WASM as a JS module requires us to call an init function provided by the default export.
       // This is planned to be changed in the future.
-      import { default as wasm, mimc } from "./pkg/mimc_wasm.js";
+      import { default as wasm, sponge } from "./pkg/mimc_wasm.js";
 
       wasm().then((module) => {
 
@@ -25,10 +25,8 @@
             planetRarity:16384
           };
           
-          var planetList = mimc(task);
-          
-          planetList.forEach(planet => console.log(planet.x, planet.y, planet.hash));
-
+          let hashString = sponge(task.chunkFootprint.bottomLeft.x,task.chunkFootprint.bottomLeft.y,220,task.planetHashKey );
+          console.log(hashString);
       });
     </script>
   </body>

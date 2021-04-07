@@ -1,6 +1,6 @@
 [package]
 name = "mimc-wasm"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Jacob Rosenthal <jacobrosenthal@gmail.com>"]
 edition = "2018"
 
@@ -12,15 +12,6 @@ crate-type = ["cdylib"]
 # so it's only enabled in release mode.
 lto = true
 
-[features]
-# If you uncomment this line, it will enable `wee_alloc`:
-default = ["wee_alloc"]
-
 [dependencies]
 wasm-bindgen = { version = "0.2.73", features = ["serde-serialize"] }
 mimc = { path = "../mimc/" }
-itertools = "0.10.0"
-wee_alloc = { version = "0.4.2", optional = true }
-js-sys = "0.3.50"
-serde-wasm-bindgen = "0.1.3"
-serde = "1.0.125"

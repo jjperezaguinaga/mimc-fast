@@ -1,11 +1,46 @@
 use http_types::headers::HeaderValue;
 use itertools::iproduct;
-use mimc::{Coords, MimcState, Planet, Response, Task, P, U512};
+use mimc::{MimcState, P, U512};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::ops::Div;
 use tide::security::{CorsMiddleware, Origin};
 use tide::{Body, Request};
 use tide_acme::{AcmeConfig, TideRustlsExt};
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Coords {
+    pub x: i64,
+    pub y: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Planet {
+    pub coords: Coords,
+    pub hash: String,
+}
+
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ChunkFootprint {
+    pub bottomLeft: Coords,
+    pub sideLength: i64,
+}
+
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Task {
+    pub chunkFootprint: ChunkFootprint,
+    pub planetRarity: u32,
+    pub planetHashKey: u32,
+}
+
+#[allow(non_snake_case)]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Response {
+    pub chunkFootprint: ChunkFootprint,
+    pub planetLocations: Vec<Planet>,
+}
 
 #[async_std::main]
 async fn main() -> tide::Result<()> {
@@ -37,7 +72,7 @@ async fn main() -> tide::Result<()> {
         let planets = iproduct!(x..(x + size), y..(y + size))
             .par_bridge()
             .filter_map(|(xi, yi)| {
-                let hash = MimcState::sponge(vec![xi, yi], 1, 220, key)[0].x;
+                let hash = MimcState::sponge(&[xi, yi], 220, key);
                 if hash < threshold {
                     Some(Planet {
                         coords: Coords { x: xi, y: yi },
