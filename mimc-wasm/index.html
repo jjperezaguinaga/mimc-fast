@@ -9,7 +9,9 @@
     <script type="module">
       // Importing WASM as a JS module requires us to call an init function provided by the default export.
       // This is planned to be changed in the future.
-      import { default as wasm, mimc } from "./pkg/mimc_wasm.js";
+      import { default as wasm, mimc, sponge_vec, sponge_array, sponge_array2, sponge_uint8array,sponge_box, sponge_string  } from "./pkg/mimc_wasm.js";
+
+
 
       wasm().then((module) => {
 
@@ -28,6 +30,118 @@
           var planetList = mimc(task);
           
           planetList.forEach(planet => console.log(planet.x, planet.y, planet.hash));
+
+
+          const {x,y} = task.chunkFootprint.bottomLeft;
+          const {sideLength} = task.chunkFootprint;
+          const {planetHashKey} = task;
+
+
+          var times = [];
+          for (let i = 0; i < 10000; i++) {
+              var t0 = performance.now()
+              var hash = sponge_vec(x,y,220,planetHashKey);
+              var t1 = performance.now()
+              var time = (t1 - t0);
+              times.push(time);
+          }
+          var avg = times.reduce((accumulator, currentValue) => accumulator + currentValue) / times.length;
+          console.log("heater em up.")
+          console.log('\n\n')
+
+
+
+
+
+
+
+          
+          var times = [];
+          for (let i = 0; i < 10000; i++) {
+              var t0 = performance.now()
+              var hash = sponge_string(x,y,220,planetHashKey);
+              var t1 = performance.now()
+              var time = (t1 - t0);
+              times.push(time);
+          }
+          var avg = times.reduce((accumulator, currentValue) => accumulator + currentValue) / times.length;
+          console.log("Call to sponge_string " + avg + " milliseconds.")
+          console.log('\n\n')
+
+
+
+
+          var times = [];
+          for (let i = 0; i < 10000; i++) {
+              var t0 = performance.now()
+              var hash = sponge_vec(x,y,220,planetHashKey);
+              var t1 = performance.now()
+              var time = (t1 - t0);
+              times.push(time);
+          }
+          var avg = times.reduce((accumulator, currentValue) => accumulator + currentValue) / times.length;
+          console.log("Call to sponge_vec " + avg + " milliseconds.")
+          console.log('\n\n')
+
+
+          var times = [];
+          for (let i = 0; i < 10000; i++) {
+              var t0 = performance.now()
+              var hash = sponge_array(x,y,220,planetHashKey);
+              var t1 = performance.now()
+              var time = (t1 - t0);
+              times.push(time);
+          }
+          var avg = times.reduce((accumulator, currentValue) => accumulator + currentValue) / times.length;
+          console.log("Call to sponge_array " + avg + " milliseconds.")
+          console.log('\n\n')
+
+          
+
+          var times = [];
+          for (let i = 0; i < 10000; i++) {
+              var t0 = performance.now()
+              var hash = sponge_array2(x,y,220,planetHashKey);
+              var t1 = performance.now()
+              var time = (t1 - t0);
+              times.push(time);
+          }
+          var avg = times.reduce((accumulator, currentValue) => accumulator + currentValue) / times.length;
+          console.log("Call to sponge_array2 " + avg + " milliseconds.")
+          console.log('\n\n')
+
+          
+
+          var times = [];
+          for (let i = 0; i < 10000; i++) {
+              var t0 = performance.now()
+              var hash = sponge_uint8array(x,y,220,planetHashKey);
+              var t1 = performance.now()
+              var time = (t1 - t0);
+              times.push(time);
+          }
+          var avg = times.reduce((accumulator, currentValue) => accumulator + currentValue) / times.length;
+          console.log("Call to sponge_uint8array " + avg + " milliseconds.")
+          console.log('\n\n')
+
+          
+
+          var times = [];
+          for (let i = 0; i < 10000; i++) {
+              var t0 = performance.now()
+              var hash = sponge_box(x,y,220,planetHashKey);
+              var t1 = performance.now()
+              var time = (t1 - t0);
+              times.push(time);
+          }
+          var avg = times.reduce((accumulator, currentValue) => accumulator + currentValue) / times.length;
+          console.log("Call to sponge_box " + avg + " milliseconds.")
+          console.log('\n\n')
+
+          
+          
+
+
 
       });
     </script>

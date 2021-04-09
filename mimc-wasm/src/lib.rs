@@ -68,3 +68,64 @@ pub fn mimc(val: &JsValue) -> Array {
         .map(JsValue::from)
         .collect()
 }
+
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn sponge_vec(x: i32, y: i32, rounds: usize, key: u32) -> Vec<u8> {
+    let mut blah = [0u8; 64];
+
+    mimc::MimcState::sponge(vec![x.into(), y.into()], 1, rounds, key)[0]
+        .x
+        .to_little_endian(&mut blah);
+
+    blah.into()
+}
+
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn sponge_array(x: i32, y: i32, rounds: usize, key: u32) -> Array {
+    let mut blah = [0u8; 64];
+    mimc::MimcState::sponge(vec![x.into(), y.into()], 1, rounds, key)[0]
+        .x
+        .to_little_endian(&mut blah);
+
+    blah.iter().map(|x| JsValue::from(*x as u8)).collect()
+}
+
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn sponge_array2(x: i32, y: i32, rounds: usize, key: u32) -> Array {
+    let mut blah = [0u8; 64];
+    mimc::MimcState::sponge(vec![x.into(), y.into()], 1, rounds, key)[0]
+        .x
+        .to_little_endian(&mut blah);
+
+    blah.iter().cloned().map(JsValue::from).collect()
+}
+
+use js_sys::Uint8Array;
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn sponge_uint8array(x: i32, y: i32, rounds: usize, key: u32) -> Uint8Array {
+    let mut blah = [0u8; 64];
+
+    mimc::MimcState::sponge(vec![x.into(), y.into()], 1, rounds, key)[0]
+        .x
+        .to_little_endian(&mut blah);
+
+    let array: Array = blah.iter().map(|x| JsValue::from(*x as u8)).collect();
+    Uint8Array::new(&array)
+}
+
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn sponge_box(x: i32, y: i32, rounds: usize, key: u32) -> Box<[u8]> {
+    let mut blah = [0u8; 64];
+    mimc::MimcState::sponge(vec![x.into(), y.into()], 1, rounds, key)[0]
+        .x
+        .to_little_endian(&mut blah);
+
+    blah.into()
+}
+
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn sponge_string(x: i32, y: i32, rounds: usize, key: u32) -> String {
+    mimc::MimcState::sponge(vec![x.into(), y.into()], 1, rounds, key)[0]
+        .x
+        .to_string()
+}
