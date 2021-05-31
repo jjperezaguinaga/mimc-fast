@@ -1,0 +1,37 @@
+# Dark forest mimc miner
+
+[Dark Forest](https://zkga.me/), the world's first decentralized real-time
+strategy game. Built on Ethereum with zkSNARKsis a <https://zkga.me/>
+
+Note if you're not technical and cant get through this guide, remember you can
+get a lot of speedup by just having the stock game use more cores with
+something like `df.setMinerCores(16)` in the console. So try that first.
+
+This rust package pulls out the fog of war miner to its own binary with a
+webserver for in game plugins to talk to it. It provides faster results than the
+built in javascript miner on the same machine. If you're using it on the same
+machine as the game Pause your in game miner as theyll just compete with
+eachother and give WORSE results. It also can run remotely in the
+cloud or even a rapsberry pi 4 has been found to provide 1-2k hashes.
+
+## Install
+
+The rust miner on the same machine as your game can be faster than the javascript because it can more fully utilize the processor. But if you're running on the same machine as the game, pause the in game miner. They're just going to compete with eachother and give you worse peformance.
+
+- Install [rust for your operating system](https://www.rust-lang.org/tools/install) probably with `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+- Install with `cargo install --git https://github.com/jacobrosenthal/mimc-fast --branch v6-warp-split --force`
+- Run it (with logging enabled environment variable) with `RUST_LOG=info mimc-fast`
+- Connect to it with an the built in game plugin RemoteExplorePlugin
+
+### tuning
+
+By defualt the miner uses as much of your processor as possible. This is good if you're on a cloud machine, but not great if you're also trying to run the game. A single processor machine with 4 cores, and 2 threads per core, has 8 threads available. Adjust for your machine, but you might try 4 or 6 threads and see if you dont get even a little better performance because its not competing with the game for resources. You can set the amount of threads to use with an environment variable before the executable like `RAYON_NUM_THREADS=4 mimc-fast`
+
+## Troubleshooting
+
+You can get far more debug logs by running with `RUST_LOG=trace cargo run`
+
+To test its working you can do a quick curl `curl --data '{"chunkFootprint": { "bottomLeft": { "x": 0, "y": 0 }, "sideLength": 256 }, "planetRarity":16384, "planetHashKey": 8}' -H "Content-Type: application/json" -X POST localhost:8000/mine`
+
+Remember to pause the built in miner if you're running it on the same machine as
+the game client or theyll just fight eachother.

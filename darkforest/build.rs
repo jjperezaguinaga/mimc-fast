@@ -1,32 +1,10 @@
-#![feature(proc_macro_hygiene, decl_macro)]
-
-#[macro_use]
-extern crate rocket;
-
-#[macro_use]
-extern crate lazy_static;
-
-use uint::construct_uint;
-construct_uint! {
-    pub struct U512(8);
-}
-use itertools::iproduct;
-use std::ops::Div;
-use std::ops::Rem;
+use mimc::{PrimeElem, U512};
 use std::env;
+use std::fs;
+use std::io::Write;
+use std::path::Path;
 
-use rocket_contrib::json::Json;
-use serde::{Deserialize, Serialize};
-
-use rayon::prelude::*;
-
-use rocket::http::Method;
-use rocket::config::{Config, ConfigError, Environment};
-use rocket_cors::{catch_all_options_routes, AllowedHeaders, AllowedOrigins};
-
-static KEY: u32 = 7;
-
-lazy_static! {
+lazy_static::lazy_static! {
     static ref P: U512 = U512::from_dec_str(
         "21888242871839275222246405745257275088548364400416034343698204186575808495617"
     )
@@ -263,192 +241,26 @@ lazy_static! {
     };
 }
 
-#[derive(Debug, Clone)]
-struct PrimeElem {
-    x: U512,
-}
+fn main() {
+    let out_dir = env::var_os("OUT_DIR").unwrap();
+    let dest_path = Path::new(&out_dir).join("constants.rs");
+    let mut f = fs::File::create(&dest_path).unwrap();
 
-impl PrimeElem {
-    fn plus(&self, rhs: &PrimeElem) -> PrimeElem {
-        let (sum, overflowed) = self.x.overflowing_add(rhs.x);
-        assert!(!overflowed);
-        let res = sum.rem(*P);
-        PrimeElem { x: res }
-    }
-
-    fn times(&self, rhs: &PrimeElem) -> PrimeElem {
-        let (prod, overflowed) = self.x.overflowing_mul(rhs.x);
-        assert!(!overflowed);
-        let res = prod.rem(*P);
-        assert!(!overflowed);
-        PrimeElem { x: res }
-    }
-
-    fn fifth_power(&self) -> PrimeElem {
-        let s = self.times(self);
-        let f = s.times(&s);
-        f.times(self)
-    }
-
-    fn zero() -> PrimeElem {
-        PrimeElem { x: U512::zero() }
-    }
-}
-
-struct MimcState {
-    l: PrimeElem,
-    r: PrimeElem,
-    rounds: usize,
-    k: PrimeElem,
-}
-
-impl MimcState {
-    fn new(rounds: usize, k: PrimeElem) -> MimcState {
-        assert!(rounds <= C.len());
-        MimcState {
-            l: PrimeElem::zero(),
-            r: PrimeElem::zero(),
-            rounds,
-            k,
+    writeln!(&mut f, "const C: [PrimeElem; {}] = [", C.len()).unwrap();
+    for v in C.iter() {
+        writeln!(&mut f, "PrimeElem {{x: U512([").unwrap();
+        for byte in v.x.as_ref().iter() {
+            writeln!(&mut f, "    {},", &format!("{:?}", byte)).unwrap();
         }
+        writeln!(&mut f, "])}},").unwrap();
     }
+    writeln!(&mut f, "];").unwrap();
 
-    fn inject(&mut self, elt: &PrimeElem) {
-        self.l = self.l.plus(elt);
+    writeln!(&mut f, "const P: U512 = U512([").unwrap();
+    for byte in P.as_ref().iter() {
+        writeln!(&mut f, "    {},", &format!("{:?}", byte)).unwrap();
     }
+    writeln!(&mut f, "]);").unwrap();
 
-    fn mix(&mut self) {
-        for i in 0..(self.rounds - 1) {
-            let t = self.k.plus(&self.l).plus(&C[i]);
-            let l_new = t.fifth_power().plus(&self.r);
-            self.r = self.l.clone();
-            self.l = l_new;
-        }
-        let t = self.k.plus(&self.l);
-        self.r = t.fifth_power().plus(&self.r);
-    }
-
-    fn sponge(inputs: Vec<i64>, n_outputs: usize, rounds: usize) -> Vec<PrimeElem> {
-        let inputs = inputs
-            .into_iter()
-            .map(|x| {
-                let bigx = if x < 0 {
-                    let (diff, overflowed) =
-                        P.overflowing_sub(U512::from_big_endian(&((-x).to_be_bytes())));
-                    assert!(!overflowed);
-                    diff
-                } else {
-                    U512::from_big_endian(&x.to_be_bytes())
-                };
-                PrimeElem { x: bigx }
-            })
-            .collect::<Vec<_>>();
-        let mut state = MimcState::new(rounds, PrimeElem { x: U512::from(KEY) });
-        for elt in inputs {
-            state.inject(&elt);
-            state.mix();
-        }
-        let mut outputs = vec![state.l.clone()];
-        for _ in 1..n_outputs {
-            state.mix();
-            outputs.push(state.l.clone());
-        }
-        outputs
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-struct Coords {
-    x: i64,
-    y: i64,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Planet {
-    coords: Coords,
-    hash: String,
-}
-
-#[allow(non_snake_case)]
-#[derive(Serialize, Deserialize, Clone)]
-struct ChunkFootprint {
-    bottomLeft: Coords,
-    sideLength: i64,
-}
-
-#[allow(non_snake_case)]
-#[derive(Deserialize)]
-struct Task {
-    chunkFootprint: ChunkFootprint,
-    planetRarity: u32,
-}
-
-#[allow(non_snake_case)]
-#[derive(Serialize)]
-struct Response {
-    chunkFootprint: ChunkFootprint,
-    planetLocations: Vec<Planet>,
-}
-
-#[post("/mine", data = "<task>")]
-fn mine(task: Json<Task>) -> Json<Response> {
-    let x = task.chunkFootprint.bottomLeft.x;
-    let y = task.chunkFootprint.bottomLeft.y;
-    let size = task.chunkFootprint.sideLength;
-
-    let threshold = P.div(U512::from(task.planetRarity));
-
-    let planets = iproduct!(x..(x + size), y..(y + size))
-        .par_bridge()
-        .filter_map(|(xi, yi)| {
-            let hash = MimcState::sponge(vec![xi, yi], 1, 220)[0].x;
-            if hash < threshold {
-                Some(Planet {
-                    coords: Coords { x: xi, y: yi },
-                    hash: hash.to_string(),
-                })
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<Planet>>();
-
-    Json(Response {
-        chunkFootprint: task.chunkFootprint.clone(),
-        planetLocations: planets,
-    })
-}
-
-fn main() -> Result<(), ConfigError> {
-    let key = "PORT";
-    let port: u16 = match env::var(key) {
-        Ok(val) => val.parse::<u16>().unwrap(),
-        Err(_) => 8000,
-    };
-
-    let allowed_origins = AllowedOrigins::all();
-    let cors = rocket_cors::CorsOptions {
-        allowed_origins,
-        allowed_methods: vec![Method::Post].into_iter().map(From::from).collect(),
-        allowed_headers: AllowedHeaders::all(),
-        allow_credentials: true,
-        ..Default::default()
-    }
-    .to_cors()
-    .unwrap();
-    let options_routes = catch_all_options_routes();
-
-    let config = Config::build(Environment::Staging)
-        .address("0.0.0.0")
-        .port(port)
-        .finalize()?;
-
-    rocket::custom(config)
-        .mount("/", routes![mine])
-        .mount("/", options_routes)
-        .manage(cors.clone())
-        .attach(cors)
-        .launch();
-
-    Ok(())
+    println!("cargo:rerun-if-changed=build.rs");
 }

@@ -1,17 +1,14 @@
-[package]
-name = "mimc-fast"
-version = "0.1.0"
-authors = ["Alex Gajewski <agajews@gmail.com>"]
-edition = "2018"
+[workspace]
+members = ["mimc", "mimc-fast", "darkforest"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-lazy_static = "1.4.0"
-uint = "0.8.5"
-rocket = "0.4.6"
-rocket_contrib = "0.4.6"
-rocket_cors = "0.5.2"
-serde = { version = "1.0.118", features = ["derive"] }
-rayon = "1.5.0"
-itertools = "0.9.0"
+# force release mode for dev in case people dont use --release
+[profile.dev]
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
+lto = false
+panic = 'unwind'
+incremental = false
+codegen-units = 16
+rpath = false
